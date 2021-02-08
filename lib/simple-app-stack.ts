@@ -5,6 +5,8 @@ import { Runtime } from "@aws-cdk/aws-lambda";
 import * as path from "path";
 import { BucketDeployment, Source } from "@aws-cdk/aws-s3-deployment";
 import { PolicyStatement } from "@aws-cdk/aws-iam";
+import { HttpApi, HttpMethod } from "@aws-cdk/aws-apigatewayv2";
+import { LambdaProxyIntegration } from "@aws-cdk/aws-apigatewayv2-integrations";
 
 export class SimpleAppStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
@@ -41,6 +43,25 @@ export class SimpleAppStack extends cdk.Stack {
     getPhotos.addToRolePolicy(bucketContainerPermissions);
     getPhotos.addToRolePolicy(bucketPermissions);
 
+    const httpApi = new HttpApi(this, "MySimpleAppHTTPAPI", {
+      corsPreflight: {
+        allowOrigins: ["*"],
+        allowMethods: [HttpMethod.GET],
+      },
+      apiName: "photo-api",
+      createDefaultStage: true,
+    });
+
+    const lambdaIntegration = new LambdaProxyIntegration({
+      handler: getPhotos,
+    });
+
+    httpApi.addRoutes({
+      path: "/getAllPhotos",
+      methods: [HttpMethod.GET],
+      integration: lambdaIntegration,
+    });
+
     new cdk.CfnOutput(this, "MySimpleAppBucketNameExport", {
       value: bucket.bucketName,
       exportName: "MySimpleAppBucketName",
@@ -49,6 +70,11 @@ export class SimpleAppStack extends cdk.Stack {
     new cdk.CfnOutput(this, "MySimpleAppLambdaExport", {
       value: getPhotos.toString(),
       exportName: "MySimpleAppLambda",
+    });
+
+    new cdk.CfnOutput(this, "MySimpleAppApi", {
+      value: httpApi.url!,
+      exportName: "MySimpleAppAPIEndpoint",
     });
   }
 }
