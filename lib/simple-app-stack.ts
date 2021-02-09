@@ -21,6 +21,16 @@ export class SimpleAppStack extends cdk.Stack {
       destinationBucket: bucket,
     });
 
+    const websiteBucket = new Bucket(this, "MySimpleAppWebsiteBucket", {
+      websiteIndexDocument: "index.html",
+      publicReadAccess: true,
+    });
+
+    new BucketDeployment(this, "MySimpleAppWebsiteDeployed", {
+      sources: [Source.asset(path.join(__dirname, "..", "frontend", "build"))],
+      destinationBucket: websiteBucket,
+    });
+
     const getPhotos = new lambda.NodejsFunction(this, "MySimpleAppLambda", {
       runtime: Runtime.NODEJS_12_X,
       entry: path.join(__dirname, "..", "api", "get-photos", "index.ts"),
@@ -65,6 +75,11 @@ export class SimpleAppStack extends cdk.Stack {
     new cdk.CfnOutput(this, "MySimpleAppBucketNameExport", {
       value: bucket.bucketName,
       exportName: "MySimpleAppBucketName",
+    });
+
+    new cdk.CfnOutput(this, "MySimpleAppWebsiteBucketNameExport", {
+      value: websiteBucket.bucketName,
+      exportName: "MySimpleAppWebsiteBucketName",
     });
 
     new cdk.CfnOutput(this, "MySimpleAppLambdaExport", {
