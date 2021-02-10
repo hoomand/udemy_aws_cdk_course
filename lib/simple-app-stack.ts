@@ -1,4 +1,4 @@
-import { Bucket, BucketEncryption } from "@aws-cdk/aws-s3";
+import { BlockPublicAccess, Bucket, BucketEncryption } from "@aws-cdk/aws-s3";
 import * as lambda from "@aws-cdk/aws-lambda-nodejs";
 import * as cdk from "@aws-cdk/core";
 import { Runtime } from "@aws-cdk/aws-lambda";
@@ -7,6 +7,10 @@ import { BucketDeployment, Source } from "@aws-cdk/aws-s3-deployment";
 import { PolicyStatement } from "@aws-cdk/aws-iam";
 import { HttpApi, HttpMethod } from "@aws-cdk/aws-apigatewayv2";
 import { LambdaProxyIntegration } from "@aws-cdk/aws-apigatewayv2-integrations";
+import {
+  CloudFrontWebDistribution,
+  OriginAccessIdentity,
+} from "@aws-cdk/aws-cloudfront";
 
 export class SimpleAppStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
@@ -23,13 +27,36 @@ export class SimpleAppStack extends cdk.Stack {
 
     const websiteBucket = new Bucket(this, "MySimpleAppWebsiteBucket", {
       websiteIndexDocument: "index.html",
-      publicReadAccess: true,
+      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+      versioned: true,
+      encryption: BucketEncryption.S3_MANAGED,
     });
 
     new BucketDeployment(this, "MySimpleAppWebsiteDeployed", {
       sources: [Source.asset(path.join(__dirname, "..", "frontend", "build"))],
       destinationBucket: websiteBucket,
     });
+
+    const oia = new OriginAccessIdentity(this, "OIA", {
+      comment: "Created by CDK",
+    });
+    websiteBucket.grantRead(oia);
+
+    const cloudFront = new CloudFrontWebDistribution(
+      this,
+      "MySimpleAppDistribution",
+      {
+        originConfigs: [
+          {
+            s3OriginSource: {
+              s3BucketSource: websiteBucket,
+              originAccessIdentity: oia,
+            },
+            behaviors: [{ isDefaultBehavior: true }],
+          },
+        ],
+      }
+    );
 
     const getPhotos = new lambda.NodejsFunction(this, "MySimpleAppLambda", {
       runtime: Runtime.NODEJS_12_X,
@@ -80,6 +107,11 @@ export class SimpleAppStack extends cdk.Stack {
     new cdk.CfnOutput(this, "MySimpleAppWebsiteBucketNameExport", {
       value: websiteBucket.bucketName,
       exportName: "MySimpleAppWebsiteBucketName",
+    });
+
+    new cdk.CfnOutput(this, "MySimpleAppWebsiteURL", {
+      value: cloudFront.distributionDomainName,
+      exportName: "MySimpleAppWebsiteURL",
     });
 
     new cdk.CfnOutput(this, "MySimpleAppLambdaExport", {
