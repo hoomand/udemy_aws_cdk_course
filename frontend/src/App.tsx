@@ -1,22 +1,35 @@
-import React from "react";
-import logo from "./logo.svg";
+import React, { useEffect, useState } from "react";
 import "./App.css";
+import axios from "axios";
+import { Carousel } from "react-bootstrap";
+import "bootstrap/dist/css/bootstrap.min.css";
 
 function App() {
+  const [allPhotos, setAllPhotos] = useState([]);
+  async function fetchPhotos() {
+    const { data } = await axios.get(`${baseURI}getAllPhotos`);
+    console.log(data);
+    setAllPhotos(data);
+  }
+  const baseURI: String = process.env.REACT_APP_API_URL!;
+
+  useEffect(() => {
+    fetchPhotos();
+  }, []);
+
+  function getCarouselImage(photo: any) {
+    return (
+      <Carousel.Item interval={1000}>
+        <img src={photo.url} alt={photo.filename} />
+        <Carousel.Caption>
+          <h3>{photo.filename}</h3>
+        </Carousel.Caption>
+      </Carousel.Item>
+    );
+  }
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>Hello from React from CDK!</p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <Carousel>{allPhotos.map((photo) => getCarouselImage(photo))}</Carousel>
     </div>
   );
 }
