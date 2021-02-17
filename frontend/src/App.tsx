@@ -19,7 +19,7 @@ function App() {
 
   function getCarouselImage(photo: any) {
     return (
-      <Carousel.Item interval={1000}>
+      <Carousel.Item interval={1000} style={{ height: 350 }}>
         <img src={photo.url} alt={photo.filename} />
         <Carousel.Caption>
           <h3>{photo.filename}</h3>
